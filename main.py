@@ -16,6 +16,7 @@ import json
 
 from database import init_db, get_db, User, Event, DailyStat
 from database import Session as DBSession
+from geo_utils import get_location_from_ip
 
 app = FastAPI(title="Crsh Macro Analytics API")
 
@@ -70,20 +71,31 @@ async def root():
     return {"message": "Crsh Macro Analytics API", "status": "online"}
 
 @app.post("/api/session/start")
-async def start_session(session_data: SessionStart, db: Session = Depends(get_db)):
+async def start_session(session_data: SessionStart, request: Request, db: Session = Depends(get_db)):
     """Start a new session"""
     try:
+        # Get client IP for geolocation
+        client_ip = request.client.host if request.client else None
         # Update or create user
         user = db.query(User).filter(User.user_id == session_data.user_id).first()
         if not user:
+            # Get location for new users
+            location = get_location_from_ip(client_ip) if client_ip else None
+            
             user = User(
                 user_id=session_data.user_id,
                 username=session_data.username,
                 avatar_hash=session_data.avatar_hash,
                 discriminator=session_data.discriminator,
+                country=location.get('country') if location else None,
+                city=location.get('city') if location else None,
+                latitude=location.get('latitude') if location else None,
+                longitude=location.get('longitude') if location else None,
                 first_seen=datetime.utcnow(),
                 total_sessions=0,
                 total_hours=0.0,
+                total_macros_created=0,
+                total_macros_played=0,
                 app_version=session_data.app_version
             )
             db.add(user)
@@ -173,6 +185,15 @@ async def log_event(event: EventLog, db: Session = Depends(get_db)):
             timestamp=datetime.utcnow()
         )
         db.add(new_event)
+        
+        # Update user macro stats
+        user = db.query(User).filter(User.user_id == event.user_id).first()
+        if user:
+            if event.event_type == "macro_created" or event.event_type == "macro_recorded":
+                user.total_macros_created += 1
+            elif event.event_type == "macro_played":
+                user.total_macros_played += 1
+        
         db.commit()
         
         return {"status": "success"}
@@ -281,8 +302,12 @@ async def get_user_stats(limit: int = 100, db: Session = Depends(get_db)):
             "username": user.username or "Anonymous",
             "avatar_hash": user.avatar_hash,
             "discriminator": user.discriminator,
+            "country": user.country,
+            "city": user.city,
             "total_hours": round(user.total_hours, 2),
             "total_sessions": user.total_sessions,
+            "total_macros_created": user.total_macros_created,
+            "total_macros_played": user.total_macros_played,
             "first_seen": user.first_seen.isoformat(),
             "last_seen": user.last_seen.isoformat(),
             "app_version": user.app_version or "Unknown"
@@ -304,6 +329,79 @@ async def get_event_stats(db: Session = Depends(get_db)):
             "event_type": event_type,
             "count": count
         } for event_type, count in event_counts]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/geographic")
+async def get_geographic_stats(db: Session = Depends(get_db)):
+    """Get geographic distribution of users"""
+    try:
+        # Get user counts by country
+        country_stats = db.query(
+            User.country,
+            func.count(User.id).label('users')
+        ).filter(User.country.isnot(None)).group_by(User.country).all()
+        
+        # Get individual users with locations for map
+        users_with_location = db.query(User).filter(
+            User.latitude.isnot(None),
+            User.longitude.isnot(None)
+        ).all()
+        
+        return {
+            "countries": [{
+                "country": country,
+                "users": users
+            } for country, users in country_stats],
+            "user_locations": [{
+                "user_id": user.user_id,
+                "username": user.username,
+                "latitude": user.latitude,
+                "longitude": user.longitude,
+                "city": user.city,
+                "country": user.country
+            } for user in users_with_location]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/macros")
+async def get_macro_stats(db: Session = Depends(get_db)):
+    """Get macro statistics"""
+    try:
+        # Total macros created and played
+        total_created = db.query(func.sum(User.total_macros_created)).scalar() or 0
+        total_played = db.query(func.sum(User.total_macros_played)).scalar() or 0
+        
+        # Average macros per user
+        user_count = db.query(func.count(User.id)).scalar() or 1
+        avg_created = total_created / user_count
+        avg_played = total_played / user_count
+        
+        # Top macro creators
+        top_creators = db.query(User).filter(
+            User.total_macros_created > 0
+        ).order_by(User.total_macros_created.desc()).limit(10).all()
+        
+        # Most active macro users
+        top_players = db.query(User).filter(
+            User.total_macros_played > 0
+        ).order_by(User.total_macros_played.desc()).limit(10).all()
+        
+        return {
+            "total_macros_created": total_created,
+            "total_macros_played": total_played,
+            "average_macros_per_user": round(avg_created, 2),
+            "average_plays_per_user": round(avg_played, 2),
+            "top_creators": [{
+                "username": user.username or "Anonymous",
+                "macros_created": user.total_macros_created
+            } for user in top_creators],
+            "top_players": [{
+                "username": user.username or "Anonymous",
+                "macros_played": user.total_macros_played
+            } for user in top_players]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

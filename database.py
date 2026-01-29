@@ -22,10 +22,16 @@ class User(Base):
     username = Column(String, nullable=True)  # Discord username
     avatar_hash = Column(String, nullable=True)  # Discord avatar hash
     discriminator = Column(String, nullable=True)  # Discord discriminator (legacy)
+    country = Column(String, nullable=True)  # Country code (US, UK, etc.)
+    city = Column(String, nullable=True)  # City name
+    latitude = Column(Float, nullable=True)  # Latitude
+    longitude = Column(Float, nullable=True)  # Longitude
     first_seen = Column(DateTime, default=datetime.utcnow)
     last_seen = Column(DateTime, default=datetime.utcnow)
     total_sessions = Column(Integer, default=0, nullable=False)  # Number of times exe launched
     total_hours = Column(Float, default=0.0, nullable=False)
+    total_macros_created = Column(Integer, default=0, nullable=False)  # Total macros created
+    total_macros_played = Column(Integer, default=0, nullable=False)  # Total macros played
     app_version = Column(String, nullable=True)
 
 class Session(Base):
