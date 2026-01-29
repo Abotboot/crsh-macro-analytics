@@ -10,3 +10,7 @@ venv/
 .venv/
 *.log
 .DS_Store
+
+# Private documentation (don't push to GitHub)
+PRIVATE_*.md
+DEPLOY_INSTRUCTIONS.txt
