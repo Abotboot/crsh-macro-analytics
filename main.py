@@ -226,11 +226,12 @@ async def get_overview_stats(db: Session = Depends(get_db)):
             User.last_seen >= last_week
         ).scalar() or 0
         
-        # Currently active sessions (no end time, started in last 2 hours)
-        two_hours_ago = datetime.utcnow() - timedelta(hours=2)
+        # Currently active sessions (no end time, started in last 15 minutes)
+        # Consider sessions dead if no heartbeat for 15 minutes
+        fifteen_min_ago = datetime.utcnow() - timedelta(minutes=15)
         currently_active = db.query(func.count(DBSession.id)).filter(
             DBSession.end_time.is_(None),
-            DBSession.start_time >= two_hours_ago
+            DBSession.start_time >= fifteen_min_ago
         ).scalar() or 0
         
         # Average session duration

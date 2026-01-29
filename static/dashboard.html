@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crsh Macro Analytics Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
             margin: 0;
@@ -168,6 +168,20 @@
         .user-id {
             font-size: 0.75rem;
             opacity: 0.6;
+        }
+
+        /* Fix Leaflet map CSS */
+        #worldMap {
+            position: relative;
+            z-index: 1;
+        }
+
+        .leaflet-container {
+            background: #1a1a2e !important;
+        }
+
+        .leaflet-tile-pane {
+            opacity: 1;
         }
 
         .loading {
@@ -392,18 +406,31 @@
 
         // Initialize world map
         function initMap() {
-            worldMap = L.map('worldMap', {
-                zoomControl: true,
-                scrollWheelZoom: false, // Disable scroll zoom (less buggy)
-                doubleClickZoom: true
-            }).setView([20, 0], 2);
-            
-            // Use dark theme tiles for better look
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap © CARTO',
-                maxZoom: 18,
-                minZoom: 1
-            }).addTo(worldMap);
+            // Wait a bit for CSS to load
+            setTimeout(() => {
+                try {
+                    worldMap = L.map('worldMap', {
+                        zoomControl: true,
+                        scrollWheelZoom: false,
+                        doubleClickZoom: true,
+                        preferCanvas: true
+                    }).setView([20, 0], 2);
+                    
+                    // Use dark theme tiles
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '© OpenStreetMap © CARTO',
+                        maxZoom: 18,
+                        minZoom: 1
+                    }).addTo(worldMap);
+
+                    // Force resize after init
+                    setTimeout(() => {
+                        worldMap.invalidateSize();
+                    }, 200);
+                } catch (error) {
+                    console.error('Error initializing map:', error);
+                }
+            }, 100);
         }
 
         // Initialize charts
