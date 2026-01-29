@@ -209,24 +209,50 @@
             margin-right: 10px;
         }
 
-        .user-locations-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 12px;
-            margin-top: 15px;
+        .macro-list {
+            max-height: 500px;
+            overflow-y: auto;
         }
 
-        .location-item {
+        .macro-item {
+            padding: 15px;
+            margin: 10px 0;
             background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
         }
 
-        .location-icon {
-            font-size: 1.5rem;
+        .macro-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: #4ade80;
+            transform: translateX(5px);
+        }
+
+        .macro-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .macro-count {
+            color: #4ade80;
+            font-weight: 600;
+        }
+
+        .macro-actions {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .action-item {
+            margin: 3px 0;
+            opacity: 0.9;
         }
 
         .loading {
@@ -368,20 +394,21 @@
                 </div>
             </div>
 
-            <!-- Geographic Distribution -->
+            <!-- Popular Macros -->
             <div class="chart-container">
-                <h2>🌍 Geographic Distribution</h2>
-                <div style="text-align: center; margin-bottom: 20px; opacity: 0.8;">
-                    <span id="totalCountries" style="font-size: 1.2rem; font-weight: 600;">0</span> countries • 
-                    <span id="totalUsers" style="font-size: 1.2rem; font-weight: 600;">0</span> users
-                </div>
-                <div id="countryGrid" class="geo-grid">
-                    <!-- Populated by JS -->
-                </div>
-                <div style="margin-top: 25px;">
-                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">📍 All User Locations</h3>
-                    <div id="userLocationsList" class="user-locations-list">
-                        <!-- Populated by JS -->
+                <h2>🔥 Popular Macros</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+                    <div>
+                        <h3 style="margin-bottom: 15px; font-size: 1.2rem;">📝 Most Recorded</h3>
+                        <div id="mostRecordedList" class="macro-list">
+                            <div style="text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom: 15px; font-size: 1.2rem;">▶️ Most Played</h3>
+                        <div id="mostPlayedList" class="macro-list">
+                            <div style="text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -556,54 +583,50 @@
             }
         }
 
-        // Load geographic data
-        async function loadGeographic() {
+        // Load popular macros
+        async function loadPopularMacros() {
             try {
-                const response = await fetch(`${API_URL}/stats/geographic`);
+                const response = await fetch(`${API_URL}/stats/popular-macros`);
                 const data = await response.json();
 
-                // Update totals
-                document.getElementById('totalCountries').textContent = data.countries.length;
-                document.getElementById('totalUsers').textContent = data.user_locations.length;
-
-                // Populate country grid
-                const countryGrid = document.getElementById('countryGrid');
-                countryGrid.innerHTML = '';
-
-                // Sort countries by user count
-                data.countries.sort((a, b) => b.users - a.users);
-
-                data.countries.forEach(country => {
-                    const card = document.createElement('div');
-                    card.className = 'country-card';
-                    card.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="country-flag">${getCountryFlag(country.country)}</span>
-                            <div>
-                                <div class="country-name">${country.country}</div>
-                                <div class="country-users">${country.users} ${country.users === 1 ? 'user' : 'users'}</div>
+                // Display most recorded macros
+                const recordedList = document.getElementById('mostRecordedList');
+                if (recordedList) {
+                    recordedList.innerHTML = '';
+                    data.most_recorded.slice(0, 10).forEach((macro, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'macro-item';
+                        item.innerHTML = `
+                            <div class="macro-name">#${index + 1} ${macro.macro_name}</div>
+                            <div><span class="macro-count">${macro.count}</span> times recorded • ${macro.total_actions} actions</div>
+                            <div class="macro-actions">
+                                ${macro.action_summary.slice(0, 5).map(action => `<div class="action-item">• ${action}</div>`).join('') || '<div class="action-item">No actions</div>'}
                             </div>
-                        </div>
-                    `;
-                    countryGrid.appendChild(card);
-                });
+                        `;
+                        recordedList.appendChild(item);
+                    });
+                }
 
-                // Populate user locations list
-                const locationsList = document.getElementById('userLocationsList');
-                locationsList.innerHTML = '';
+                // Display most played macros
+                const playedList = document.getElementById('mostPlayedList');
+                if (playedList) {
+                    playedList.innerHTML = '';
+                    data.most_played.slice(0, 10).forEach((macro, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'macro-item';
+                        item.innerHTML = `
+                            <div class="macro-name">#${index + 1} ${macro.macro_name}</div>
+                            <div><span class="macro-count">${macro.count}</span> times played • ${macro.total_actions} actions</div>
+                            <div class="macro-actions">
+                                ${macro.action_summary.slice(0, 5).map(action => `<div class="action-item">• ${action}</div>`).join('') || '<div class="action-item">No actions</div>'}
+                            </div>
+                        `;
+                        playedList.appendChild(item);
+                    });
+                }
 
-                data.user_locations.forEach(user => {
-                    const item = document.createElement('div');
-                    item.className = 'location-item';
-                    item.innerHTML = `
-                        <span class="location-icon">📍</span>
-                        <div>
-                            <div style="font-weight: 600;">${user.username || 'Anonymous'}</div>
-                            <div style="font-size: 0.85rem; opacity: 0.7;">${user.city}, ${user.country}</div>
-                        </div>
-                    `;
-                    locationsList.appendChild(item);
-                });
+                // Old country grid code removed - now showing popular macros instead
+                    
             } catch (error) {
                 console.error('Error loading geographic data:', error);
             }
@@ -726,7 +749,7 @@
                 loadOverview(),
                 loadDailyStats(),
                 loadUsers(),
-                loadGeographic(),
+                loadPopularMacros(),
                 loadMacroStats()
             ]);
 
@@ -745,3 +768,4 @@
     </script>
 </body>
 </html>
+

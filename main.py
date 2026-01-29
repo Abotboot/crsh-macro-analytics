@@ -74,23 +74,18 @@ async def root():
 async def start_session(session_data: SessionStart, request: Request, db: Session = Depends(get_db)):
     """Start a new session"""
     try:
-        # Get client IP for geolocation
-        client_ip = request.client.host if request.client else None
-        # Update or create user
+        # Update or create user (no location tracking)
         user = db.query(User).filter(User.user_id == session_data.user_id).first()
         if not user:
-            # Get location for new users
-            location = get_location_from_ip(client_ip) if client_ip else None
-            
             user = User(
                 user_id=session_data.user_id,
                 username=session_data.username,
                 avatar_hash=session_data.avatar_hash,
                 discriminator=session_data.discriminator,
-                country=location.get('country') if location else None,
-                city=location.get('city') if location else None,
-                latitude=location.get('latitude') if location else None,
-                longitude=location.get('longitude') if location else None,
+                country=None,
+                city=None,
+                latitude=None,
+                longitude=None,
                 first_seen=datetime.utcnow(),
                 total_sessions=0,
                 total_hours=0.0,
@@ -333,21 +328,79 @@ async def get_event_stats(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/stats/popular-macros")
+async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
+    """Get most popular macros (most recorded and most played)"""
+    try:
+        # Get most recorded macros
+        recorded_macros = db.query(
+            Event.event_data,
+            func.count(Event.id).label('count')
+        ).filter(
+            Event.event_type.in_(['macro_recorded', 'macro_created']),
+            Event.event_data.isnot(None)
+        ).group_by(Event.event_data).order_by(func.count(Event.id).desc()).limit(limit).all()
+        
+        # Get most played macros
+        played_macros = db.query(
+            Event.event_data,
+            func.count(Event.id).label('count')
+        ).filter(
+            Event.event_type == 'macro_played',
+            Event.event_data.isnot(None)
+        ).group_by(Event.event_data).order_by(func.count(Event.id).desc()).limit(limit).all()
+        
+        # Parse macro data
+        def parse_macro_data(macro_list):
+            result = []
+            for event_data_json, count in macro_list:
+                try:
+                    data = json.loads(event_data_json) if event_data_json else {}
+                    macro_name = data.get('macro_name', 'Unknown')
+                    actions = data.get('actions', [])
+                    
+                    # Extract action summary
+                    action_summary = []
+                    for action in actions[:10]:  # Show first 10 actions
+                        action_type = action.get('type', 'unknown')
+                        if action_type in ['KEY_PRESS', 'KEY_DOWN', 'KEY_UP']:
+                            key = action.get('key', '?')
+                            action_summary.append(f"Key: {key}")
+                        elif 'MOUSE' in action_type:
+                            button = action.get('button', 'left')
+                            x = action.get('x')
+                            y = action.get('y')
+                            if x is not None and y is not None:
+                                action_summary.append(f"Mouse {button} at ({x}, {y})")
+                            else:
+                                action_summary.append(f"Mouse {button}")
+                        elif action_type == 'DELAY':
+                            delay = action.get('delay', 0)
+                            action_summary.append(f"Wait {delay}ms")
+                    
+                    result.append({
+                        'macro_name': macro_name,
+                        'count': count,
+                        'total_actions': len(actions),
+                        'action_summary': action_summary
+                    })
+                except:
+                    pass
+            return result
+        
+        return {
+            'most_recorded': parse_macro_data(recorded_macros),
+            'most_played': parse_macro_data(played_macros)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/stats/geographic")
 async def get_geographic_stats(db: Session = Depends(get_db)):
-    """Get geographic distribution of users"""
+    """Get geographic distribution of users (disabled for privacy)"""
     try:
-        # Get user counts by country
-        country_stats = db.query(
-            User.country,
-            func.count(User.id).label('users')
-        ).filter(User.country.isnot(None)).group_by(User.country).all()
-        
-        # Get individual users with locations for map
-        users_with_location = db.query(User).filter(
-            User.latitude.isnot(None),
-            User.longitude.isnot(None)
-        ).all()
+        # Return empty data - location tracking disabled
+        users_with_location = []
         
         return {
             "countries": [{
