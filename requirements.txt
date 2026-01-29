@@ -3,5 +3,5 @@ uvicorn>=0.24.0
 sqlalchemy>=2.0.0
 pydantic>=2.4.0
 python-dateutil>=2.8.0
-geoip2>=4.7.0
 requests>=2.31.0
+psycopg2-binary>=2.9.9
