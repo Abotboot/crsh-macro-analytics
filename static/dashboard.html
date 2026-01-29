@@ -312,7 +312,10 @@
             <!-- World Map -->
             <div class="chart-container">
                 <h2>🌍 User Locations</h2>
-                <div id="worldMap" style="height: 400px; border-radius: 10px; overflow: hidden;"></div>
+                <div id="worldMap" style="height: 400px; border-radius: 10px; overflow: hidden; background: #1a1a2e;"></div>
+                <div style="text-align: center; margin-top: 10px; opacity: 0.7; font-size: 0.9rem;">
+                    <span id="mapUserCount">0</span> users tracked
+                </div>
             </div>
 
             <!-- Macro Stats -->
@@ -389,11 +392,17 @@
 
         // Initialize world map
         function initMap() {
-            worldMap = L.map('worldMap').setView([20, 0], 2);
+            worldMap = L.map('worldMap', {
+                zoomControl: true,
+                scrollWheelZoom: false, // Disable scroll zoom (less buggy)
+                doubleClickZoom: true
+            }).setView([20, 0], 2);
             
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 18
+            // Use dark theme tiles for better look
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap © CARTO',
+                maxZoom: 18,
+                minZoom: 1
             }).addTo(worldMap);
         }
 
@@ -494,14 +503,35 @@
                     }
                 });
 
-                // Add markers for each user location
+                // Update count
+                document.getElementById('mapUserCount').textContent = data.user_locations.length;
+
+                // Add markers for each user location with custom icon
                 data.user_locations.forEach(user => {
-                    const marker = L.marker([user.latitude, user.longitude]).addTo(worldMap);
+                    const customIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: '<div style="background: #667eea; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    });
+
+                    const marker = L.marker([user.latitude, user.longitude], {
+                        icon: customIcon
+                    }).addTo(worldMap);
+                    
                     marker.bindPopup(`
-                        <b>${user.username || 'Anonymous'}</b><br>
-                        ${user.city}, ${user.country}
+                        <div style="color: #333; font-family: 'Segoe UI', sans-serif;">
+                            <b style="font-size: 14px;">${user.username || 'Anonymous'}</b><br>
+                            <span style="font-size: 12px;">${user.city}, ${user.country}</span>
+                        </div>
                     `);
                 });
+
+                // Fit map to show all markers if there are any
+                if (data.user_locations.length > 0) {
+                    const bounds = data.user_locations.map(u => [u.latitude, u.longitude]);
+                    worldMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 5 });
+                }
             } catch (error) {
                 console.error('Error loading geographic data:', error);
             }
