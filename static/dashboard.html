@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crsh Macro Analytics Dashboard</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * {
             margin: 0;
@@ -170,18 +168,62 @@
             opacity: 0.6;
         }
 
-        /* Fix Leaflet map CSS */
-        #worldMap {
-            position: relative;
-            z-index: 1;
+        /* Geographic visualization */
+        .geo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
         }
 
-        .leaflet-container {
-            background: #1a1a2e !important;
+        .country-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
         }
 
-        .leaflet-tile-pane {
-            opacity: 1;
+        .country-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .country-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .country-users {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .country-flag {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+
+        .user-locations-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .location-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .location-icon {
+            font-size: 1.5rem;
         }
 
         .loading {
@@ -323,12 +365,21 @@
                 </div>
             </div>
 
-            <!-- World Map -->
+            <!-- Geographic Distribution -->
             <div class="chart-container">
-                <h2>🌍 User Locations</h2>
-                <div id="worldMap" style="height: 400px; border-radius: 10px; overflow: hidden; background: #1a1a2e;"></div>
-                <div style="text-align: center; margin-top: 10px; opacity: 0.7; font-size: 0.9rem;">
-                    <span id="mapUserCount">0</span> users tracked
+                <h2>🌍 Geographic Distribution</h2>
+                <div style="text-align: center; margin-bottom: 20px; opacity: 0.8;">
+                    <span id="totalCountries" style="font-size: 1.2rem; font-weight: 600;">0</span> countries • 
+                    <span id="totalUsers" style="font-size: 1.2rem; font-weight: 600;">0</span> users
+                </div>
+                <div id="countryGrid" class="geo-grid">
+                    <!-- Populated by JS -->
+                </div>
+                <div style="margin-top: 25px;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">📍 All User Locations</h3>
+                    <div id="userLocationsList" class="user-locations-list">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
 
@@ -402,35 +453,20 @@
 
     <script>
         const API_URL = window.location.origin + '/api';
-        let dailyUsersChart, dailyHoursChart, worldMap;
+        let dailyUsersChart, dailyHoursChart;
 
-        // Initialize world map
-        function initMap() {
-            // Wait a bit for CSS to load
-            setTimeout(() => {
-                try {
-                    worldMap = L.map('worldMap', {
-                        zoomControl: true,
-                        scrollWheelZoom: false,
-                        doubleClickZoom: true,
-                        preferCanvas: true
-                    }).setView([20, 0], 2);
-                    
-                    // Use dark theme tiles
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                        attribution: '© OpenStreetMap © CARTO',
-                        maxZoom: 18,
-                        minZoom: 1
-                    }).addTo(worldMap);
+        // Country flag emojis
+        const countryFlags = {
+            'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪',
+            'FR': '🇫🇷', 'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷',
+            'MX': '🇲🇽', 'ES': '🇪🇸', 'IT': '🇮🇹', 'NL': '🇳🇱', 'SE': '🇸🇪',
+            'NO': '🇳🇴', 'DK': '🇩🇰', 'FI': '🇫🇮', 'PL': '🇵🇱', 'RU': '🇷🇺',
+            'KR': '🇰🇷', 'SG': '🇸🇬', 'MY': '🇲🇾', 'TH': '🇹🇭', 'VN': '🇻🇳',
+            'PH': '🇵🇭', 'ID': '🇮🇩', 'AR': '🇦🇷', 'CL': '🇨🇱', 'CO': '🇨🇴'
+        };
 
-                    // Force resize after init
-                    setTimeout(() => {
-                        worldMap.invalidateSize();
-                    }, 200);
-                } catch (error) {
-                    console.error('Error initializing map:', error);
-                }
-            }, 100);
+        function getCountryFlag(countryCode) {
+            return countryFlags[countryCode] || '🌍';
         }
 
         // Initialize charts
@@ -523,42 +559,48 @@
                 const response = await fetch(`${API_URL}/stats/geographic`);
                 const data = await response.json();
 
-                // Clear existing markers
-                worldMap.eachLayer((layer) => {
-                    if (layer instanceof L.Marker) {
-                        worldMap.removeLayer(layer);
-                    }
-                });
+                // Update totals
+                document.getElementById('totalCountries').textContent = data.countries.length;
+                document.getElementById('totalUsers').textContent = data.user_locations.length;
 
-                // Update count
-                document.getElementById('mapUserCount').textContent = data.user_locations.length;
+                // Populate country grid
+                const countryGrid = document.getElementById('countryGrid');
+                countryGrid.innerHTML = '';
 
-                // Add markers for each user location with custom icon
-                data.user_locations.forEach(user => {
-                    const customIcon = L.divIcon({
-                        className: 'custom-marker',
-                        html: '<div style="background: #667eea; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                        iconSize: [12, 12],
-                        iconAnchor: [6, 6]
-                    });
+                // Sort countries by user count
+                data.countries.sort((a, b) => b.users - a.users);
 
-                    const marker = L.marker([user.latitude, user.longitude], {
-                        icon: customIcon
-                    }).addTo(worldMap);
-                    
-                    marker.bindPopup(`
-                        <div style="color: #333; font-family: 'Segoe UI', sans-serif;">
-                            <b style="font-size: 14px;">${user.username || 'Anonymous'}</b><br>
-                            <span style="font-size: 12px;">${user.city}, ${user.country}</span>
+                data.countries.forEach(country => {
+                    const card = document.createElement('div');
+                    card.className = 'country-card';
+                    card.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="country-flag">${getCountryFlag(country.country)}</span>
+                            <div>
+                                <div class="country-name">${country.country}</div>
+                                <div class="country-users">${country.users} ${country.users === 1 ? 'user' : 'users'}</div>
+                            </div>
                         </div>
-                    `);
+                    `;
+                    countryGrid.appendChild(card);
                 });
 
-                // Fit map to show all markers if there are any
-                if (data.user_locations.length > 0) {
-                    const bounds = data.user_locations.map(u => [u.latitude, u.longitude]);
-                    worldMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 5 });
-                }
+                // Populate user locations list
+                const locationsList = document.getElementById('userLocationsList');
+                locationsList.innerHTML = '';
+
+                data.user_locations.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'location-item';
+                    item.innerHTML = `
+                        <span class="location-icon">📍</span>
+                        <div>
+                            <div style="font-weight: 600;">${user.username || 'Anonymous'}</div>
+                            <div style="font-size: 0.85rem; opacity: 0.7;">${user.city}, ${user.country}</div>
+                        </div>
+                    `;
+                    locationsList.appendChild(item);
+                });
             } catch (error) {
                 console.error('Error loading geographic data:', error);
             }
@@ -691,7 +733,6 @@
 
         // Initialize on page load
         window.onload = async function() {
-            initMap();
             initCharts();
             await loadDashboard();
 
