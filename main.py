@@ -505,6 +505,33 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
+# Debug endpoint to check database connection
+@app.get("/api/debug/db")
+async def debug_db(db: Session = Depends(get_db)):
+    """Debug database connection and table info"""
+    try:
+        from database import DATABASE_URL
+        from sqlalchemy import inspect
+        
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
+        
+        # Count rows in each table
+        user_count = db.query(func.count(User.id)).scalar()
+        session_count = db.query(func.count(DBSession.id)).scalar()
+        event_count = db.query(func.count(Event.id)).scalar()
+        
+        return {
+            "database_url_prefix": DATABASE_URL[:30] + "..." if len(DATABASE_URL) > 30 else DATABASE_URL,
+            "is_postgresql": "postgresql" in DATABASE_URL.lower(),
+            "tables_found": tables,
+            "user_count": user_count,
+            "session_count": session_count,
+            "event_count": event_count
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
