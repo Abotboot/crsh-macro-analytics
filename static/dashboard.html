@@ -3,12 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crsh Macro Analytics Dashboard</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+    <title>Crsh Macro Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --bg-card-hover: #22222e;
+            --border-color: #2a2a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #8b8b9e;
+            --accent-purple: #8b5cf6;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --gradient-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,134 +36,319 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            line-height: 1.6;
         }
 
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 24px;
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--gradient-purple);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .nav-stats {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-stat {
+            text-align: center;
+        }
+
+        .nav-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .nav-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--accent-green);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        /* Main Container */
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 24px;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            animation: fadeInDown 0.8s ease;
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
         }
 
-        header h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
+        /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-            animation: fadeInUp 0.8s ease;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.2s ease;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: var(--bg-card-hover);
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
         }
 
-        .stat-card h3 {
-            font-size: 0.9rem;
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.15); }
+        .stat-icon.blue { background: rgba(59, 130, 246, 0.15); }
+        .stat-icon.green { background: rgba(16, 185, 129, 0.15); }
+        .stat-icon.orange { background: rgba(245, 158, 11, 0.15); }
+        .stat-icon.pink { background: rgba(236, 72, 153, 0.15); }
+        .stat-icon.red { background: rgba(239, 68, 68, 0.15); }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.8;
-            margin-bottom: 10px;
+            letter-spacing: 0.5px;
         }
 
-        .stat-card .value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
         }
 
-        .stat-card .label {
-            font-size: 0.85rem;
-            opacity: 0.7;
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
         }
 
-        .chart-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 20px;
-            animation: fadeInUp 0.8s ease 0.2s both;
         }
 
-        .chart-container h2 {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .chart-tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .chart-tab.active {
+            background: var(--accent-purple);
+            color: white;
         }
 
         .chart-wrapper {
+            height: 280px;
             position: relative;
-            height: 300px;
         }
 
-        .users-table-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            animation: fadeInUp 0.8s ease 0.4s both;
+        /* Leaderboard Table */
+        .leaderboard-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
         }
 
-        .users-table-container h2 {
+        .leaderboard-tabs {
+            display: flex;
+            gap: 8px;
             margin-bottom: 20px;
-            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
         }
 
-        table {
+        .leaderboard-tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            background: transparent;
+            font-weight: 500;
+        }
+
+        .leaderboard-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        .leaderboard-tab.active {
+            background: var(--accent-purple);
+            color: white;
+            border-color: var(--accent-purple);
+        }
+
+        .leaderboard-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        th, td {
-            padding: 12px;
+        .leaderboard-table th {
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        th {
+            padding: 12px 16px;
+            font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-            opacity: 0.8;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+        .leaderboard-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
         }
 
-        .user-info {
+        .leaderboard-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .rank-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
+        .rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: #000; }
+        .rank-3 { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+        .rank-default { background: var(--bg-secondary); color: var(--text-secondary); }
+
+        .user-cell {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -153,10 +358,10 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid var(--border-color);
         }
 
-        .user-details {
+        .user-info {
             display: flex;
             flex-direction: column;
         }
@@ -168,335 +373,459 @@
 
         .user-id {
             font-size: 0.75rem;
-            opacity: 0.6;
+            color: var(--text-secondary);
         }
 
-        /* Geographic visualization */
-        .geo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .country-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-            transition: all 0.3s ease;
-        }
-
-        .country-card:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(5px);
-        }
-
-        .country-name {
-            font-size: 1.1rem;
+        .time-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 20px;
             font-weight: 600;
-            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: var(--accent-purple);
         }
 
-        .country-users {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #667eea;
+        /* World Map Section */
+        .map-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
         }
 
-        .country-flag {
-            font-size: 2rem;
-            margin-right: 10px;
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .world-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* Popular Macros Grid */
+        .macros-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .macro-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
         }
 
         .macro-list {
-            max-height: 500px;
+            max-height: 400px;
             overflow-y: auto;
         }
 
+        .macro-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .macro-list::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 3px;
+        }
+
+        .macro-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
         .macro-item {
-            padding: 15px;
-            margin: 10px 0;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            border-left: 3px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--accent-purple);
+            transition: all 0.2s;
         }
 
         .macro-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-left-color: #4ade80;
-            transform: translateX(5px);
+            transform: translateX(4px);
+            border-left-color: var(--accent-green);
+        }
+
+        .macro-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
         }
 
         .macro-name {
             font-weight: 600;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .macro-rank {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
         }
 
         .macro-count {
-            color: #4ade80;
+            background: var(--gradient-green);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
             font-weight: 600;
         }
 
         .macro-actions {
-            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: 'SF Mono', 'Consolas', monospace;
+            background: rgba(0, 0, 0, 0.3);
             padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 5px;
-            font-size: 0.85rem;
-            font-family: 'Courier New', monospace;
+            border-radius: 8px;
+            margin-top: 10px;
         }
 
-        .action-item {
-            margin: 3px 0;
-            opacity: 0.9;
-        }
-
-        .loading {
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border-color);
+            padding: 24px;
             text-align: center;
-            padding: 50px;
-            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 40px;
         }
 
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid #fff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 12px;
         }
 
-        .refresh-btn {
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-purple);
+        }
+
+        /* Loading State */
+        .loading-overlay {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #fff;
-            padding: 15px 25px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .refresh-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #4ade80;
-            margin-right: 8px;
-            animation: pulse 2s ease infinite;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .grid-2col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
             gap: 20px;
         }
 
-        @media (max-width: 768px) {
-            .grid-2col {
-                grid-template-columns: 1fr;
-            }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
+            .macros-grid { grid-template-columns: 1fr; }
+            .nav-stats { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .leaderboard-tabs { flex-wrap: wrap; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎮 Crsh Macro Analytics</h1>
-            <p><span class="status-indicator"></span>Real-time Usage Statistics</p>
-        </header>
-
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Loading analytics data...</p>
-        </div>
-
-        <div id="content" style="display: none;">
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Total Users</h3>
-                    <div class="value" id="totalUsers">0</div>
-                    <div class="label">All time</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Total Hours</h3>
-                    <div class="value" id="totalHours">0</div>
-                    <div class="label">Cumulative usage</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Active Users (24h)</h3>
-                    <div class="value" id="activeUsers24h">0</div>
-                    <div class="label">Last 24 hours</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Active Users (7d)</h3>
-                    <div class="value" id="activeUsers7d">0</div>
-                    <div class="label">Last 7 days</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Total Sessions</h3>
-                    <div class="value" id="totalSessions">0</div>
-                    <div class="label">All time</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Currently Active</h3>
-                    <div class="value" id="currentlyActive">0</div>
-                    <div class="label">Live now</div>
-                </div>
-            </div>
-
-            <!-- Popular Macros -->
-            <div class="chart-container">
-                <h2>🔥 Popular Macros</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
-                    <div>
-                        <h3 style="margin-bottom: 15px; font-size: 1.2rem;">📝 Most Recorded</h3>
-                        <div id="mostRecordedList" class="macro-list">
-                            <div style="text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 15px; font-size: 1.2rem;">▶️ Most Played</h3>
-                        <div id="mostPlayedList" class="macro-list">
-                            <div style="text-align: center; opacity: 0.5; padding: 20px;">Loading...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Macro Stats -->
-            <div class="chart-container">
-                <h2>🎯 Macro Statistics</h2>
-                <div class="stats-grid" style="margin-top: 20px;">
-                    <div class="stat-card">
-                        <h3>Total Created</h3>
-                        <div class="value" id="totalMacrosCreated">0</div>
-                        <div class="label">All macros</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Total Played</h3>
-                        <div class="value" id="totalMacrosPlayed">0</div>
-                        <div class="label">Playback count</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Avg per User</h3>
-                        <div class="value" id="avgMacrosPerUser">0</div>
-                        <div class="label">Created</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Avg Plays</h3>
-                        <div class="value" id="avgPlaysPerUser">0</div>
-                        <div class="label">Per user</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Charts -->
-            <div class="grid-2col">
-                <div class="chart-container">
-                    <h2>📈 Daily Active Users (30 Days)</h2>
-                    <div class="chart-wrapper">
-                        <canvas id="dailyUsersChart"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <h2>⏱️ Daily Usage Hours (30 Days)</h2>
-                    <div class="chart-wrapper">
-                        <canvas id="dailyHoursChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Users Table -->
-            <div class="users-table-container">
-                <h2>👥 Top Users by Usage Time</h2>
-                <table id="usersTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>User</th>
-                            <th>Location</th>
-                            <th>Total Hours</th>
-                            <th>Launches</th>
-                            <th>Macros</th>
-                            <th>Last Seen</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div style="color: var(--text-secondary);">Loading analytics...</div>
     </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <div class="logo-icon">🎮</div>
+                <span>Crsh Macro</span>
+            </div>
+            <div class="nav-stats">
+                <div class="nav-stat">
+                    <div class="nav-stat-value" id="navTotalUsers">-</div>
+                    <div class="nav-stat-label">Total Users</div>
+                </div>
+                <div class="nav-stat">
+                    <div class="nav-stat-value" id="navTotalHours">-</div>
+                    <div class="nav-stat-label">Total Hours</div>
+                </div>
+                <div class="nav-stat">
+                    <div class="nav-stat-value" id="navActiveNow">-</div>
+                    <div class="nav-stat-label">Active Now</div>
+                </div>
+            </div>
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span>Live</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container" id="mainContent">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon purple">👥</div>
+                <div class="stat-value" id="totalUsers">0</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue">⏱️</div>
+                <div class="stat-value" id="totalHours">0</div>
+                <div class="stat-label">Total Hours</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">🟢</div>
+                <div class="stat-value" id="activeUsers24h">0</div>
+                <div class="stat-label">Active (24h)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange">📅</div>
+                <div class="stat-value" id="activeUsers7d">0</div>
+                <div class="stat-label">Active (7d)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon pink">🚀</div>
+                <div class="stat-value" id="totalSessions">0</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red">⚡</div>
+                <div class="stat-value" id="currentlyActive">0</div>
+                <div class="stat-label">Live Now</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">📈 Daily Active Users</div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-days="7">7D</button>
+                        <button class="chart-tab" data-days="14">14D</button>
+                        <button class="chart-tab" data-days="30">30D</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="dailyUsersChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">⏱️ Daily Usage Hours</div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" data-days="7">7D</button>
+                        <button class="chart-tab" data-days="14">14D</button>
+                        <button class="chart-tab" data-days="30">30D</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="dailyHoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- World Map -->
+        <div class="map-section">
+            <div class="section-header">
+                <div class="section-title">🌍 Global User Distribution</div>
+                <div class="section-subtitle">User density by country</div>
+            </div>
+            <div class="map-container">
+                <svg id="worldMap" class="world-map" viewBox="0 0 1000 500"></svg>
+            </div>
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #1e1b4b;"></div>
+                    <span>0 users</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4c1d95;"></div>
+                    <span>1-10</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #7c3aed;"></div>
+                    <span>11-50</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #a78bfa;"></div>
+                    <span>51-100</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #c4b5fd;"></div>
+                    <span>100+</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="leaderboard-section">
+            <div class="section-header">
+                <div class="section-title">🏆 Leaderboard</div>
+            </div>
+            <div class="leaderboard-tabs">
+                <button class="leaderboard-tab active" data-type="hours">By Hours</button>
+                <button class="leaderboard-tab" data-type="sessions">By Sessions</button>
+                <button class="leaderboard-tab" data-type="macros">By Macros Created</button>
+            </div>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">Rank</th>
+                        <th>User</th>
+                        <th>Total Time</th>
+                        <th>Sessions</th>
+                        <th>Macros</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Popular Macros -->
+        <div class="macros-grid">
+            <div class="macro-card">
+                <div class="section-header">
+                    <div class="section-title">📝 Most Recorded</div>
+                </div>
+                <div class="macro-list" id="mostRecordedList"></div>
+            </div>
+            <div class="macro-card">
+                <div class="section-header">
+                    <div class="section-title">▶️ Most Played</div>
+                </div>
+                <div class="macro-list" id="mostPlayedList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#">Discord</a>
+            <a href="#">GitHub</a>
+            <a href="#">Documentation</a>
+        </div>
+        <div>© 2026 Crsh Macro. All rights reserved.</div>
+    </footer>
 
     <script>
         const API_URL = window.location.origin + '/api';
         let dailyUsersChart, dailyHoursChart;
+        let allDailyData = [];
+        let allUsers = [];
+        let scrollPosition = 0;
 
-        // Country flag emojis
-        const countryFlags = {
-            'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪',
-            'FR': '🇫🇷', 'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷',
-            'MX': '🇲🇽', 'ES': '🇪🇸', 'IT': '🇮🇹', 'NL': '🇳🇱', 'SE': '🇸🇪',
-            'NO': '🇳🇴', 'DK': '🇩🇰', 'FI': '🇫🇮', 'PL': '🇵🇱', 'RU': '🇷🇺',
-            'KR': '🇰🇷', 'SG': '🇸🇬', 'MY': '🇲🇾', 'TH': '🇹🇭', 'VN': '🇻🇳',
-            'PH': '🇵🇭', 'ID': '🇮🇩', 'AR': '🇦🇷', 'CL': '🇨🇱', 'CO': '🇨🇴'
-        };
+        // Save scroll position before refresh
+        function saveScrollPosition() {
+            scrollPosition = window.scrollY;
+            sessionStorage.setItem('scrollPosition', scrollPosition);
+        }
 
-        function getCountryFlag(countryCode) {
-            return countryFlags[countryCode] || '🌍';
+        // Restore scroll position after refresh
+        function restoreScrollPosition() {
+            const saved = sessionStorage.getItem('scrollPosition');
+            if (saved) {
+                window.scrollTo(0, parseInt(saved));
+            }
+        }
+
+        // Format time duration
+        function formatDuration(hours) {
+            if (hours < 1) {
+                return `${Math.round(hours * 60)}m`;
+            } else if (hours < 24) {
+                return `${Math.round(hours)}h`;
+            } else {
+                const days = Math.floor(hours / 24);
+                const remainingHours = Math.round(hours % 24);
+                return `${days}d ${remainingHours}h`;
+            }
+        }
+
+        // Get time ago string
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+            return `${Math.floor(seconds / 604800)}w ago`;
+        }
+
+        // Get Discord avatar URL
+        function getDiscordAvatar(userId, avatarHash) {
+            if (!avatarHash) return 'https://cdn.discordapp.com/embed/avatars/0.png';
+            return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.png?size=128`;
         }
 
         // Initialize charts
@@ -504,66 +833,81 @@
             const chartOptions = {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
                 plugins: {
-                    legend: {
-                        display: false
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a1a24',
+                        titleColor: '#fff',
+                        bodyColor: '#8b8b9e',
+                        borderColor: '#2a2a3a',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.8)'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#8b8b9e', font: { size: 11 } }
                     },
                     x: {
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.8)'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
+                        grid: { display: false },
+                        ticks: { color: '#8b8b9e', font: { size: 11 }, maxRotation: 0 }
                     }
                 }
             };
 
-            // Daily Users Chart
-            const usersCtx = document.getElementById('dailyUsersChart').getContext('2d');
-            dailyUsersChart = new Chart(usersCtx, {
+            dailyUsersChart = new Chart(document.getElementById('dailyUsersChart'), {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Active Users',
                         data: [],
-                        borderColor: '#4ade80',
-                        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
                     }]
                 },
                 options: chartOptions
             });
 
-            // Daily Hours Chart
-            const hoursCtx = document.getElementById('dailyHoursChart').getContext('2d');
-            dailyHoursChart = new Chart(hoursCtx, {
+            dailyHoursChart = new Chart(document.getElementById('dailyHoursChart'), {
                 type: 'bar',
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Hours',
                         data: [],
-                        backgroundColor: 'rgba(147, 51, 234, 0.6)',
-                        borderColor: '#9333ea',
-                        borderWidth: 1
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        borderRadius: 4
                     }]
                 },
                 options: chartOptions
             });
+        }
+
+        // Update charts with filtered data
+        function updateChartsForDays(days) {
+            const filteredData = allDailyData.slice(-days);
+            const labels = filteredData.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            dailyUsersChart.data.labels = labels;
+            dailyUsersChart.data.datasets[0].data = filteredData.map(d => d.users);
+            dailyUsersChart.update('none');
+
+            dailyHoursChart.data.labels = labels;
+            dailyHoursChart.data.datasets[0].data = filteredData.map(d => d.hours);
+            dailyHoursChart.update('none');
         }
 
         // Load overview stats
@@ -573,14 +917,79 @@
                 const data = await response.json();
 
                 document.getElementById('totalUsers').textContent = data.total_users.toLocaleString();
-                document.getElementById('totalHours').textContent = data.total_hours.toLocaleString();
+                document.getElementById('totalHours').textContent = formatDuration(data.total_hours);
                 document.getElementById('activeUsers24h').textContent = data.active_users_24h.toLocaleString();
                 document.getElementById('activeUsers7d').textContent = data.active_users_7d.toLocaleString();
                 document.getElementById('totalSessions').textContent = data.total_sessions.toLocaleString();
                 document.getElementById('currentlyActive').textContent = data.currently_active.toLocaleString();
+
+                // Update navbar stats
+                document.getElementById('navTotalUsers').textContent = data.total_users.toLocaleString();
+                document.getElementById('navTotalHours').textContent = formatDuration(data.total_hours);
+                document.getElementById('navActiveNow').textContent = data.currently_active.toLocaleString();
             } catch (error) {
                 console.error('Error loading overview:', error);
             }
+        }
+
+        // Load daily stats
+        async function loadDailyStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats/daily?days=30`);
+                allDailyData = await response.json();
+                updateChartsForDays(7);
+            } catch (error) {
+                console.error('Error loading daily stats:', error);
+            }
+        }
+
+        // Load users for leaderboard
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}/stats/users?limit=50`);
+                allUsers = await response.json();
+                renderLeaderboard('hours');
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Render leaderboard
+        function renderLeaderboard(sortBy) {
+            let sorted = [...allUsers];
+            if (sortBy === 'hours') {
+                sorted.sort((a, b) => b.total_hours - a.total_hours);
+            } else if (sortBy === 'sessions') {
+                sorted.sort((a, b) => b.total_sessions - a.total_sessions);
+            } else if (sortBy === 'macros') {
+                sorted.sort((a, b) => b.total_macros_created - a.total_macros_created);
+            }
+
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = sorted.slice(0, 25).map((user, index) => {
+                const rank = index + 1;
+                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-default';
+                const avatarUrl = getDiscordAvatar(user.user_id, user.avatar_hash);
+
+                return `
+                    <tr>
+                        <td><div class="rank-badge ${rankClass}">${rank}</div></td>
+                        <td>
+                            <div class="user-cell">
+                                <img src="${avatarUrl}" class="user-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                                <div class="user-info">
+                                    <span class="user-name">${user.username || 'Anonymous'}</span>
+                                    <span class="user-id">${user.user_id.slice(0, 8)}...</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="time-badge">⏱️ ${formatDuration(user.total_hours)}</span></td>
+                        <td>${user.total_sessions.toLocaleString()}</td>
+                        <td>${user.total_macros_created} / ${user.total_macros_played}</td>
+                        <td style="color: var(--text-secondary);">${getTimeAgo(user.last_seen)}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // Load popular macros
@@ -589,183 +998,104 @@
                 const response = await fetch(`${API_URL}/stats/popular-macros`);
                 const data = await response.json();
 
-                // Display most recorded macros
-                const recordedList = document.getElementById('mostRecordedList');
-                if (recordedList) {
-                    recordedList.innerHTML = '';
-                    data.most_recorded.slice(0, 10).forEach((macro, index) => {
-                        const item = document.createElement('div');
-                        item.className = 'macro-item';
-                        item.innerHTML = `
-                            <div class="macro-name">#${index + 1} ${macro.macro_name}</div>
-                            <div><span class="macro-count">${macro.count}</span> times recorded • ${macro.total_actions} actions</div>
-                            <div class="macro-actions">
-                                ${macro.action_summary.slice(0, 5).map(action => `<div class="action-item">• ${action}</div>`).join('') || '<div class="action-item">No actions</div>'}
-                            </div>
-                        `;
-                        recordedList.appendChild(item);
-                    });
-                }
-
-                // Display most played macros
-                const playedList = document.getElementById('mostPlayedList');
-                if (playedList) {
-                    playedList.innerHTML = '';
-                    data.most_played.slice(0, 10).forEach((macro, index) => {
-                        const item = document.createElement('div');
-                        item.className = 'macro-item';
-                        item.innerHTML = `
-                            <div class="macro-name">#${index + 1} ${macro.macro_name}</div>
-                            <div><span class="macro-count">${macro.count}</span> times played • ${macro.total_actions} actions</div>
-                            <div class="macro-actions">
-                                ${macro.action_summary.slice(0, 5).map(action => `<div class="action-item">• ${action}</div>`).join('') || '<div class="action-item">No actions</div>'}
-                            </div>
-                        `;
-                        playedList.appendChild(item);
-                    });
-                }
-
-                // Old country grid code removed - now showing popular macros instead
-                    
-            } catch (error) {
-                console.error('Error loading geographic data:', error);
-            }
-        }
-
-        // Load macro stats
-        async function loadMacroStats() {
-            try {
-                const response = await fetch(`${API_URL}/stats/macros`);
-                const data = await response.json();
-
-                document.getElementById('totalMacrosCreated').textContent = data.total_macros_created.toLocaleString();
-                document.getElementById('totalMacrosPlayed').textContent = data.total_macros_played.toLocaleString();
-                document.getElementById('avgMacrosPerUser').textContent = data.average_macros_per_user.toLocaleString();
-                document.getElementById('avgPlaysPerUser').textContent = data.average_plays_per_user.toLocaleString();
-            } catch (error) {
-                console.error('Error loading macro stats:', error);
-            }
-        }
-
-        // Load daily stats
-        async function loadDailyStats() {
-            try {
-                const response = await fetch(`${API_URL}/stats/daily?days=30`);
-                const data = await response.json();
-
-                const labels = data.map(d => d.date);
-                const users = data.map(d => d.users);
-                const hours = data.map(d => d.hours);
-
-                dailyUsersChart.data.labels = labels;
-                dailyUsersChart.data.datasets[0].data = users;
-                dailyUsersChart.update();
-
-                dailyHoursChart.data.labels = labels;
-                dailyHoursChart.data.datasets[0].data = hours;
-                dailyHoursChart.update();
-            } catch (error) {
-                console.error('Error loading daily stats:', error);
-            }
-        }
-
-        // Get Discord avatar URL
-        function getDiscordAvatar(userId, avatarHash) {
-            if (!avatarHash) {
-                // Default Discord avatar
-                return 'https://cdn.discordapp.com/embed/avatars/0.png';
-            }
-            return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.png?size=128`;
-        }
-
-        // Load users table
-        async function loadUsers() {
-            try {
-                const response = await fetch(`${API_URL}/stats/users?limit=50`);
-                const data = await response.json();
-
-                const tbody = document.getElementById('usersTableBody');
-                tbody.innerHTML = '';
-
-                data.forEach((user, index) => {
-                    const row = document.createElement('tr');
-                    const lastSeen = new Date(user.last_seen);
-                    const timeAgo = getTimeAgo(lastSeen);
-                    const avatarUrl = getDiscordAvatar(user.user_id, user.avatar_hash);
-                    const location = user.city && user.country ? `${user.city}, ${user.country}` : (user.country || 'Unknown');
-
-                    row.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td>
-                            <div class="user-info">
-                                <img src="${avatarUrl}" alt="${user.username}" class="user-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-                                <div class="user-details">
-                                    <span class="user-name">${user.username}</span>
-                                    <span class="user-id">ID: ${user.user_id}</span>
+                const renderList = (list, containerId) => {
+                    const container = document.getElementById(containerId);
+                    if (!list || list.length === 0) {
+                        container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 40px;">No data yet</div>';
+                        return;
+                    }
+                    container.innerHTML = list.slice(0, 10).map((macro, index) => `
+                        <div class="macro-item">
+                            <div class="macro-header">
+                                <div class="macro-name">
+                                    <span class="macro-rank">#${index + 1}</span>
+                                    ${macro.macro_name}
                                 </div>
+                                <span class="macro-count">${macro.count}x</span>
                             </div>
-                        </td>
-                        <td>${location}</td>
-                        <td>${user.total_hours} hrs</td>
-                        <td>${user.total_sessions}</td>
-                        <td>${user.total_macros_created} / ${user.total_macros_played}</td>
-                        <td>${timeAgo}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${macro.total_actions} actions</div>
+                            ${macro.action_summary.length > 0 ? `
+                                <div class="macro-actions">
+                                    ${macro.action_summary.slice(0, 3).map(a => `<div>• ${a}</div>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('');
+                };
+
+                renderList(data.most_recorded, 'mostRecordedList');
+                renderList(data.most_played, 'mostPlayedList');
             } catch (error) {
-                console.error('Error loading users:', error);
+                console.error('Error loading popular macros:', error);
             }
         }
 
-        // Helper function for time ago
-        function getTimeAgo(date) {
-            const seconds = Math.floor((new Date() - date) / 1000);
-            
-            let interval = seconds / 31536000;
-            if (interval > 1) return Math.floor(interval) + " years ago";
-            
-            interval = seconds / 2592000;
-            if (interval > 1) return Math.floor(interval) + " months ago";
-            
-            interval = seconds / 86400;
-            if (interval > 1) return Math.floor(interval) + " days ago";
-            
-            interval = seconds / 3600;
-            if (interval > 1) return Math.floor(interval) + " hours ago";
-            
-            interval = seconds / 60;
-            if (interval > 1) return Math.floor(interval) + " minutes ago";
-            
-            return "Just now";
+        // Simple world map (SVG paths for major countries)
+        function initWorldMap() {
+            // This is a simplified placeholder - in production you'd use a proper map library
+            const svg = document.getElementById('worldMap');
+            svg.innerHTML = `
+                <rect width="100%" height="100%" fill="#12121a"/>
+                <text x="50%" y="50%" text-anchor="middle" fill="#8b8b9e" font-size="14">
+                    Geographic data collection disabled for privacy
+                </text>
+                <text x="50%" y="55%" text-anchor="middle" fill="#4c4c5c" font-size="12">
+                    Enable location tracking to see user distribution
+                </text>
+            `;
         }
 
-        // Load all dashboard data
+        // Set up event listeners
+        function setupEventListeners() {
+            // Chart tabs
+            document.querySelectorAll('.chart-tabs').forEach(tabGroup => {
+                tabGroup.querySelectorAll('.chart-tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabGroup.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        updateChartsForDays(parseInt(tab.dataset.days));
+                    });
+                });
+            });
+
+            // Leaderboard tabs
+            document.querySelectorAll('.leaderboard-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderLeaderboard(tab.dataset.type);
+                });
+            });
+        }
+
+        // Main load function
         async function loadDashboard() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('content').style.display = 'none';
+            saveScrollPosition();
 
             await Promise.all([
                 loadOverview(),
                 loadDailyStats(),
                 loadUsers(),
-                loadPopularMacros(),
-                loadMacroStats()
+                loadPopularMacros()
             ]);
 
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
+            restoreScrollPosition();
         }
 
-        // Initialize on page load
+        // Initialize
         window.onload = async function() {
             initCharts();
+            initWorldMap();
+            setupEventListeners();
+
             await loadDashboard();
 
-            // Auto refresh every 30 seconds
+            // Hide loading overlay
+            document.getElementById('loadingOverlay').style.display = 'none';
+
+            // Auto refresh every 30 seconds (without scroll reset)
             setInterval(loadDashboard, 30000);
         };
     </script>
 </body>
 </html>
-

@@ -397,24 +397,23 @@ async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
 
 @app.get("/api/stats/geographic")
 async def get_geographic_stats(db: Session = Depends(get_db)):
-    """Get geographic distribution of users (disabled for privacy)"""
+    """Get geographic distribution of users"""
     try:
-        # Return empty data - location tracking disabled
-        users_with_location = []
+        # Get country stats from users who have location data
+        country_stats = db.query(
+            User.country,
+            func.count(User.id).label('count')
+        ).filter(
+            User.country.isnot(None),
+            User.country != ''
+        ).group_by(User.country).order_by(func.count(User.id).desc()).all()
         
         return {
             "countries": [{
                 "country": country,
-                "users": users
-            } for country, users in country_stats],
-            "user_locations": [{
-                "user_id": user.user_id,
-                "username": user.username,
-                "latitude": user.latitude,
-                "longitude": user.longitude,
-                "city": user.city,
-                "country": user.country
-            } for user in users_with_location]
+                "users": count
+            } for country, count in country_stats],
+            "total_with_location": sum(count for _, count in country_stats)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -455,6 +454,32 @@ async def get_macro_stats(db: Session = Depends(get_db)):
                 "username": user.username or "Anonymous",
                 "macros_played": user.total_macros_played
             } for user in top_players]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/hourly")
+async def get_hourly_stats(db: Session = Depends(get_db)):
+    """Get hourly distribution of usage (what hours users are most active)"""
+    try:
+        # Get sessions from last 30 days
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        sessions = db.query(DBSession).filter(
+            DBSession.start_time >= thirty_days_ago
+        ).all()
+        
+        # Count sessions by hour of day
+        hourly_counts = [0] * 24
+        for session in sessions:
+            hour = session.start_time.hour
+            hourly_counts[hour] += 1
+        
+        return {
+            "hourly_distribution": [
+                {"hour": h, "sessions": hourly_counts[h]}
+                for h in range(24)
+            ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
