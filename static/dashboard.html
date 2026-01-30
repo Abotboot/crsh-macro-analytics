@@ -699,8 +699,10 @@
                 <div class="section-title">🌍 Global User Distribution</div>
                 <div class="section-subtitle">User density by country</div>
             </div>
-            <div class="map-container">
-                <svg id="worldMap" class="world-map" viewBox="0 0 1000 500"></svg>
+            <div class="map-container" id="worldMap">
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">
+                    Loading geographic data...
+                </div>
             </div>
             <div class="map-legend">
                 <div class="legend-item">
@@ -1030,19 +1032,81 @@
             }
         }
 
-        // Simple world map (SVG paths for major countries)
-        function initWorldMap() {
-            // This is a simplified placeholder - in production you'd use a proper map library
-            const svg = document.getElementById('worldMap');
-            svg.innerHTML = `
-                <rect width="100%" height="100%" fill="#12121a"/>
-                <text x="50%" y="50%" text-anchor="middle" fill="#8b8b9e" font-size="14">
-                    Geographic data collection disabled for privacy
-                </text>
-                <text x="50%" y="55%" text-anchor="middle" fill="#4c4c5c" font-size="12">
-                    Enable location tracking to see user distribution
-                </text>
-            `;
+        // Country code to name mapping
+        const countryNames = {
+            'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia',
+            'DE': 'Germany', 'FR': 'France', 'JP': 'Japan', 'CN': 'China', 'IN': 'India',
+            'BR': 'Brazil', 'MX': 'Mexico', 'ES': 'Spain', 'IT': 'Italy', 'NL': 'Netherlands',
+            'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland',
+            'RU': 'Russia', 'KR': 'South Korea', 'SG': 'Singapore', 'MY': 'Malaysia',
+            'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines', 'ID': 'Indonesia',
+            'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia', 'TR': 'Turkey', 'SA': 'Saudi Arabia',
+            'AE': 'UAE', 'EG': 'Egypt', 'ZA': 'South Africa', 'NG': 'Nigeria', 'PK': 'Pakistan',
+            'BD': 'Bangladesh', 'UA': 'Ukraine', 'CZ': 'Czech Republic', 'AT': 'Austria',
+            'CH': 'Switzerland', 'BE': 'Belgium', 'PT': 'Portugal', 'GR': 'Greece', 'RO': 'Romania',
+            'HU': 'Hungary', 'IE': 'Ireland', 'NZ': 'New Zealand', 'IL': 'Israel'
+        };
+
+        const countryFlags = {
+            'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪', 'FR': '🇫🇷',
+            'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷', 'MX': '🇲🇽', 'ES': '🇪🇸',
+            'IT': '🇮🇹', 'NL': '🇳🇱', 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰', 'FI': '🇫🇮',
+            'PL': '🇵🇱', 'RU': '🇷🇺', 'KR': '🇰🇷', 'SG': '🇸🇬', 'MY': '🇲🇾', 'TH': '🇹🇭',
+            'VN': '🇻🇳', 'PH': '🇵🇭', 'ID': '🇮🇩', 'AR': '🇦🇷', 'CL': '🇨🇱', 'CO': '🇨🇴',
+            'TR': '🇹🇷', 'SA': '🇸🇦', 'AE': '🇦🇪', 'EG': '🇪🇬', 'ZA': '🇿🇦', 'NG': '🇳🇬',
+            'PK': '🇵🇰', 'BD': '🇧🇩', 'UA': '🇺🇦', 'CZ': '🇨🇿', 'AT': '🇦🇹', 'CH': '🇨🇭',
+            'BE': '🇧🇪', 'PT': '🇵🇹', 'GR': '🇬🇷', 'RO': '🇷🇴', 'HU': '🇭🇺', 'IE': '🇮🇪',
+            'NZ': '🇳🇿', 'IL': '🇮🇱'
+        };
+
+        // Load geographic data
+        async function loadGeographicData() {
+            try {
+                const response = await fetch(`${API_URL}/stats/geographic`);
+                const data = await response.json();
+                
+                const container = document.getElementById('worldMap');
+                
+                if (!data.countries || data.countries.length === 0) {
+                    container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">
+                            <div style="font-size: 3rem; margin-bottom: 16px;">🌍</div>
+                            <div style="font-size: 1rem;">No geographic data yet</div>
+                            <div style="font-size: 0.85rem; opacity: 0.7;">Data will appear as users connect</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Find max for color scaling
+                const maxUsers = Math.max(...data.countries.map(c => c.users));
+                
+                // Render country cards
+                container.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 16px; height: 100%; overflow-y: auto;">
+                        ${data.countries.map((country, index) => {
+                            const intensity = Math.min(country.users / maxUsers, 1);
+                            const bgColor = `rgba(139, 92, 246, ${0.1 + intensity * 0.4})`;
+                            const borderColor = `rgba(139, 92, 246, ${0.3 + intensity * 0.5})`;
+                            const flag = countryFlags[country.country] || '🌍';
+                            const name = countryNames[country.country] || country.country;
+                            
+                            return `
+                                <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px;">
+                                    <div style="font-size: 2rem;">${flag}</div>
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem;">${name}</div>
+                                        <div style="color: var(--accent-purple); font-weight: 700; font-size: 1.25rem;">${country.users}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">users</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading geographic data:', error);
+            }
         }
 
         // Set up event listeners
@@ -1076,7 +1140,8 @@
                 loadOverview(),
                 loadDailyStats(),
                 loadUsers(),
-                loadPopularMacros()
+                loadPopularMacros(),
+                loadGeographicData()
             ]);
 
             restoreScrollPosition();
@@ -1085,7 +1150,6 @@
         // Initialize
         window.onload = async function() {
             initCharts();
-            initWorldMap();
             setupEventListeners();
 
             await loadDashboard();

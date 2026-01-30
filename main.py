@@ -74,7 +74,15 @@ async def root():
 async def start_session(session_data: SessionStart, request: Request, db: Session = Depends(get_db)):
     """Start a new session"""
     try:
-        # Update or create user (no location tracking)
+        # Get client IP for geolocation
+        client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        if not client_ip:
+            client_ip = request.client.host if request.client else None
+        
+        # Get location from IP
+        location = get_location_from_ip(client_ip) if client_ip else None
+        
+        # Update or create user
         user = db.query(User).filter(User.user_id == session_data.user_id).first()
         if not user:
             user = User(
@@ -82,10 +90,10 @@ async def start_session(session_data: SessionStart, request: Request, db: Sessio
                 username=session_data.username,
                 avatar_hash=session_data.avatar_hash,
                 discriminator=session_data.discriminator,
-                country=None,
-                city=None,
-                latitude=None,
-                longitude=None,
+                country=location.get('country') if location else None,
+                city=location.get('city') if location else None,
+                latitude=location.get('latitude') if location else None,
+                longitude=location.get('longitude') if location else None,
                 first_seen=datetime.utcnow(),
                 total_sessions=0,
                 total_hours=0.0,
@@ -94,6 +102,13 @@ async def start_session(session_data: SessionStart, request: Request, db: Sessio
                 app_version=session_data.app_version
             )
             db.add(user)
+        else:
+            # Update location if we got new data and user doesn't have it
+            if location and not user.country:
+                user.country = location.get('country')
+                user.city = location.get('city')
+                user.latitude = location.get('latitude')
+                user.longitude = location.get('longitude')
         
         user.last_seen = datetime.utcnow()
         user.total_sessions += 1  # Increment every time exe is launched
