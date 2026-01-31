@@ -361,65 +361,74 @@ async def get_event_stats(db: Session = Depends(get_db)):
 async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
     """Get most popular macros (most recorded and most played)"""
     try:
-        # Get most recorded macros
-        recorded_macros = db.query(
-            Event.event_data,
-            func.count(Event.id).label('count')
-        ).filter(
+        # Get all recorded macro events
+        recorded_events = db.query(Event).filter(
             Event.event_type.in_(['macro_recorded', 'macro_created']),
             Event.event_data.isnot(None)
-        ).group_by(Event.event_data).order_by(func.count(Event.id).desc()).limit(limit).all()
+        ).all()
         
-        # Get most played macros
-        played_macros = db.query(
-            Event.event_data,
-            func.count(Event.id).label('count')
-        ).filter(
+        # Get all played macro events
+        played_events = db.query(Event).filter(
             Event.event_type == 'macro_played',
             Event.event_data.isnot(None)
-        ).group_by(Event.event_data).order_by(func.count(Event.id).desc()).limit(limit).all()
+        ).all()
         
-        # Parse macro data
-        def parse_macro_data(macro_list):
-            result = []
-            for event_data_json, count in macro_list:
+        # Aggregate by macro name
+        def aggregate_by_name(events):
+            name_counts = {}
+            name_actions = {}
+            for event in events:
                 try:
-                    data = json.loads(event_data_json) if event_data_json else {}
+                    data = json.loads(event.event_data) if event.event_data else {}
                     macro_name = data.get('macro_name', 'Unknown')
-                    actions = data.get('actions', [])
+                    if not macro_name or macro_name == 'Unknown':
+                        continue
                     
-                    # Extract action summary
-                    action_summary = []
-                    for action in actions[:10]:  # Show first 10 actions
-                        action_type = action.get('type', 'unknown')
-                        if action_type in ['KEY_PRESS', 'KEY_DOWN', 'KEY_UP']:
-                            key = action.get('key', '?')
-                            action_summary.append(f"Key: {key}")
-                        elif 'MOUSE' in action_type:
-                            button = action.get('button', 'left')
-                            x = action.get('x')
-                            y = action.get('y')
-                            if x is not None and y is not None:
-                                action_summary.append(f"Mouse {button} at ({x}, {y})")
-                            else:
-                                action_summary.append(f"Mouse {button}")
-                        elif action_type == 'DELAY':
-                            delay = action.get('delay', 0)
-                            action_summary.append(f"Wait {delay}ms")
+                    # Count plays
+                    name_counts[macro_name] = name_counts.get(macro_name, 0) + 1
                     
-                    result.append({
-                        'macro_name': macro_name,
-                        'count': count,
-                        'total_actions': len(actions),
-                        'action_summary': action_summary
-                    })
+                    # Store actions (keep first seen)
+                    if macro_name not in name_actions:
+                        name_actions[macro_name] = data.get('actions', [])
                 except:
                     pass
+            
+            # Sort by count and build result
+            sorted_names = sorted(name_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+            result = []
+            for macro_name, count in sorted_names:
+                actions = name_actions.get(macro_name, [])
+                
+                # Extract action summary
+                action_summary = []
+                for action in actions[:10]:
+                    action_type = action.get('type', 'unknown')
+                    if action_type in ['KEY_PRESS', 'KEY_DOWN', 'KEY_UP']:
+                        key = action.get('key', '?')
+                        action_summary.append(f"Key: {key}")
+                    elif 'MOUSE' in action_type:
+                        button = action.get('button', 'left')
+                        x = action.get('x')
+                        y = action.get('y')
+                        if x is not None and y is not None:
+                            action_summary.append(f"Mouse {button} at ({x}, {y})")
+                        else:
+                            action_summary.append(f"Mouse {button}")
+                    elif action_type == 'DELAY':
+                        delay = action.get('delay', 0)
+                        action_summary.append(f"Wait {delay}ms")
+                
+                result.append({
+                    'macro_name': macro_name,
+                    'count': count,
+                    'total_actions': len(actions),
+                    'action_summary': action_summary
+                })
             return result
         
         return {
-            'most_recorded': parse_macro_data(recorded_macros),
-            'most_played': parse_macro_data(played_macros)
+            'most_recorded': aggregate_by_name(recorded_events),
+            'most_played': aggregate_by_name(played_events)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
