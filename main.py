@@ -224,6 +224,17 @@ async def get_overview_stats(db: Session = Depends(get_db)):
         # Total sessions
         total_sessions = db.query(func.count(DBSession.id)).scalar() or 0
         
+        # Total macros played (sum across all users)
+        total_macros_played = db.query(func.sum(User.total_macros_played)).scalar() or 0
+        
+        # Total macros created
+        total_macros_created = db.query(func.sum(User.total_macros_created)).scalar() or 0
+        
+        # Total key events from event logs
+        total_key_events = db.query(func.count(Event.id)).filter(
+            Event.event_type.in_(['macro_played', 'macro_created', 'macro_recorded'])
+        ).scalar() or 0
+        
         # Active users (last 24 hours)
         yesterday = datetime.utcnow() - timedelta(hours=24)
         active_users_24h = db.query(func.count(distinct(User.user_id))).filter(
@@ -253,6 +264,9 @@ async def get_overview_stats(db: Session = Depends(get_db)):
             "total_users": total_users,
             "total_hours": round(total_hours, 2),
             "total_sessions": total_sessions,
+            "total_macros_played": total_macros_played,
+            "total_macros_created": total_macros_created,
+            "total_key_events": total_key_events,
             "active_users_24h": active_users_24h,
             "active_users_7d": active_users_7d,
             "currently_active": currently_active,

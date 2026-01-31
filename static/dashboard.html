@@ -608,6 +608,10 @@
             </div>
             <div class="nav-stats">
                 <div class="nav-stat">
+                    <div class="nav-stat-value" id="navMacrosPlayed">-</div>
+                    <div class="nav-stat-label">Macros Played</div>
+                </div>
+                <div class="nav-stat">
                     <div class="nav-stat-value" id="navTotalUsers">-</div>
                     <div class="nav-stat-label">Total Users</div>
                 </div>
@@ -631,6 +635,11 @@
     <div class="container" id="mainContent">
         <!-- Stats Cards -->
         <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon purple">🎮</div>
+                <div class="stat-value" id="totalMacrosPlayed">0</div>
+                <div class="stat-label">Total Macros Played</div>
+            </div>
             <div class="stat-card">
                 <div class="stat-icon purple">👥</div>
                 <div class="stat-value" id="totalUsers">0</div>
@@ -737,6 +746,7 @@
                 <button class="leaderboard-tab active" data-type="hours">By Hours</button>
                 <button class="leaderboard-tab" data-type="sessions">By Sessions</button>
                 <button class="leaderboard-tab" data-type="macros">By Macros Created</button>
+                <button class="leaderboard-tab" data-type="played">By Macros Played</button>
             </div>
             <table class="leaderboard-table">
                 <thead>
@@ -745,7 +755,8 @@
                         <th>User</th>
                         <th>Total Time</th>
                         <th>Sessions</th>
-                        <th>Macros</th>
+                        <th>Created</th>
+                        <th>Played</th>
                         <th>Last Seen</th>
                     </tr>
                 </thead>
@@ -918,6 +929,7 @@
                 const response = await fetch(`${API_URL}/stats/overview`);
                 const data = await response.json();
 
+                document.getElementById('totalMacrosPlayed').textContent = data.total_macros_played.toLocaleString();
                 document.getElementById('totalUsers').textContent = data.total_users.toLocaleString();
                 document.getElementById('totalHours').textContent = formatDuration(data.total_hours);
                 document.getElementById('activeUsers24h').textContent = data.active_users_24h.toLocaleString();
@@ -926,6 +938,7 @@
                 document.getElementById('currentlyActive').textContent = data.currently_active.toLocaleString();
 
                 // Update navbar stats
+                document.getElementById('navMacrosPlayed').textContent = data.total_macros_played.toLocaleString();
                 document.getElementById('navTotalUsers').textContent = data.total_users.toLocaleString();
                 document.getElementById('navTotalHours').textContent = formatDuration(data.total_hours);
                 document.getElementById('navActiveNow').textContent = data.currently_active.toLocaleString();
@@ -965,6 +978,8 @@
                 sorted.sort((a, b) => b.total_sessions - a.total_sessions);
             } else if (sortBy === 'macros') {
                 sorted.sort((a, b) => b.total_macros_created - a.total_macros_created);
+            } else if (sortBy === 'played') {
+                sorted.sort((a, b) => b.total_macros_played - a.total_macros_played);
             }
 
             const tbody = document.getElementById('leaderboardBody');
@@ -987,7 +1002,8 @@
                         </td>
                         <td><span class="time-badge">⏱️ ${formatDuration(user.total_hours)}</span></td>
                         <td>${user.total_sessions.toLocaleString()}</td>
-                        <td>${user.total_macros_created} / ${user.total_macros_played}</td>
+                        <td>${user.total_macros_created.toLocaleString()}</td>
+                        <td style="color: var(--accent-green); font-weight: 600;">${user.total_macros_played.toLocaleString()}</td>
                         <td style="color: var(--text-secondary);">${getTimeAgo(user.last_seen)}</td>
                     </tr>
                 `;
