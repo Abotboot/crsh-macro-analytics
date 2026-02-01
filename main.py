@@ -202,7 +202,15 @@ async def log_event(event: EventLog, db: Session = Depends(get_db)):
             if event.event_type == "macro_created" or event.event_type == "macro_recorded":
                 user.total_macros_created += 1
             elif event.event_type == "macro_played":
-                user.total_macros_played += 1
+                # Count repeat_count if provided (defaults to 1)
+                repeat_count = 1
+                if event.event_data:
+                    try:
+                        event_data_dict = event.event_data if isinstance(event.event_data, dict) else json.loads(event.event_data)
+                        repeat_count = event_data_dict.get('repeat_count', 1) or 1
+                    except:
+                        pass
+                user.total_macros_played += repeat_count
         
         db.commit()
         
@@ -374,7 +382,7 @@ async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
         ).all()
         
         # Aggregate by macro name
-        def aggregate_by_name(events):
+        def aggregate_by_name(events, is_played=False):
             name_counts = {}
             name_actions = {}
             for event in events:
@@ -384,8 +392,11 @@ async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
                     if not macro_name or macro_name == 'Unknown':
                         continue
                     
-                    # Count plays
-                    name_counts[macro_name] = name_counts.get(macro_name, 0) + 1
+                    # Count plays (for played events, use repeat_count)
+                    count_to_add = 1
+                    if is_played:
+                        count_to_add = data.get('repeat_count', 1) or 1
+                    name_counts[macro_name] = name_counts.get(macro_name, 0) + count_to_add
                     
                     # Store actions (keep first seen)
                     if macro_name not in name_actions:
@@ -427,8 +438,8 @@ async def get_popular_macros(limit: int = 50, db: Session = Depends(get_db)):
             return result
         
         return {
-            'most_recorded': aggregate_by_name(recorded_events),
-            'most_played': aggregate_by_name(played_events)
+            'most_recorded': aggregate_by_name(recorded_events, is_played=False),
+            'most_played': aggregate_by_name(played_events, is_played=True)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -689,6 +700,55 @@ async def debug_db(db: Session = Depends(get_db)):
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/api/admin/recalculate-stats")
+async def recalculate_user_stats(admin_key: str = "", db: Session = Depends(get_db)):
+    """Recalculate all user macro stats from events (admin only)"""
+    # Verify admin key
+    if admin_key != ADMIN_UPDATE_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        users = db.query(User).all()
+        updated_count = 0
+        
+        for user in users:
+            # Count macros created/recorded for this user
+            created_count = db.query(func.count(Event.id)).filter(
+                Event.user_id == user.user_id,
+                Event.event_type.in_(['macro_created', 'macro_recorded'])
+            ).scalar() or 0
+            
+            # Count macros played (with repeat_count support)
+            played_events = db.query(Event).filter(
+                Event.user_id == user.user_id,
+                Event.event_type == 'macro_played'
+            ).all()
+            
+            played_count = 0
+            for event in played_events:
+                try:
+                    if event.event_data:
+                        data = json.loads(event.event_data)
+                        played_count += data.get('repeat_count', 1) or 1
+                    else:
+                        played_count += 1
+                except:
+                    played_count += 1
+            
+            user.total_macros_created = created_count
+            user.total_macros_played = played_count
+            updated_count += 1
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "users_updated": updated_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
