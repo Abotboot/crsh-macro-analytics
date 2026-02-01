@@ -2,9 +2,9 @@
 Analytics API Server
 Receives usage data from macro clients and serves dashboard
 """
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
@@ -521,6 +521,141 @@ async def get_hourly_stats(db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# Auto-Update System
+# ============================================
+
+# Admin key for publishing updates (set via environment variable)
+ADMIN_UPDATE_KEY = os.environ.get("ADMIN_UPDATE_KEY", "crsh-admin-secret-key-change-me")
+
+# Store update info in memory (will reset on restart, but version file persists)
+UPDATE_INFO = {
+    "latest_version": "1.0.0",
+    "download_url": None,
+    "release_notes": "",
+    "released_at": None
+}
+
+# Directory for storing update files
+UPDATES_DIR = os.path.join(os.path.dirname(__file__), "updates")
+if not os.path.exists(UPDATES_DIR):
+    os.makedirs(UPDATES_DIR)
+
+# Version info file
+VERSION_FILE = os.path.join(UPDATES_DIR, "version.json")
+
+def load_version_info():
+    """Load version info from file"""
+    global UPDATE_INFO
+    if os.path.exists(VERSION_FILE):
+        try:
+            with open(VERSION_FILE, 'r') as f:
+                UPDATE_INFO = json.load(f)
+        except:
+            pass
+
+def save_version_info():
+    """Save version info to file"""
+    with open(VERSION_FILE, 'w') as f:
+        json.dump(UPDATE_INFO, f)
+
+# Load on startup
+load_version_info()
+
+@app.get("/api/update/check")
+async def check_update(current_version: str):
+    """Check if update is available"""
+    try:
+        from packaging import version
+        
+        latest = UPDATE_INFO.get("latest_version", "1.0.0")
+        
+        # Compare versions
+        try:
+            update_available = version.parse(latest) > version.parse(current_version)
+        except:
+            # Fallback to string comparison
+            update_available = latest != current_version
+        
+        return {
+            "update_available": update_available,
+            "latest_version": latest,
+            "current_version": current_version,
+            "download_url": UPDATE_INFO.get("download_url"),
+            "release_notes": UPDATE_INFO.get("release_notes", ""),
+            "released_at": UPDATE_INFO.get("released_at")
+        }
+    except Exception as e:
+        return {"update_available": False, "error": str(e)}
+
+@app.get("/api/update/download")
+async def download_update():
+    """Download the latest update"""
+    try:
+        exe_path = os.path.join(UPDATES_DIR, "CrshMacro.exe")
+        
+        if not os.path.exists(exe_path):
+            raise HTTPException(status_code=404, detail="No update available")
+        
+        def iter_file():
+            with open(exe_path, 'rb') as f:
+                while chunk := f.read(8192):
+                    yield chunk
+        
+        return StreamingResponse(
+            iter_file(),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename=CrshMacro.exe",
+                "Content-Length": str(os.path.getsize(exe_path))
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/update/publish")
+async def publish_update(
+    admin_key: str = Form(...),
+    version: str = Form(...),
+    release_notes: str = Form(""),
+    file: UploadFile = File(...)
+):
+    """Publish a new update (admin only)"""
+    # Verify admin key
+    if admin_key != ADMIN_UPDATE_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+    
+    try:
+        # Save the uploaded exe
+        exe_path = os.path.join(UPDATES_DIR, "CrshMacro.exe")
+        
+        with open(exe_path, 'wb') as f:
+            content = await file.read()
+            f.write(content)
+        
+        # Update version info
+        UPDATE_INFO["latest_version"] = version
+        UPDATE_INFO["download_url"] = "/api/update/download"
+        UPDATE_INFO["release_notes"] = release_notes
+        UPDATE_INFO["released_at"] = datetime.utcnow().isoformat()
+        
+        save_version_info()
+        
+        return {
+            "status": "success",
+            "version": version,
+            "file_size": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/update/info")
+async def get_update_info():
+    """Get current update info"""
+    return UPDATE_INFO
 
 # Health check
 @app.get("/health")
